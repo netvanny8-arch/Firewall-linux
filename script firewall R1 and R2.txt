@@ -54,7 +54,6 @@ sudo iptables -P INPUT DROP
 sudo iptables -P OUTPUT DROP
 sudo iptables -P FORWARD DROP
 
-echo "Router 1 rules applied successfully."
 
 
 for Router 2
@@ -108,3 +107,4 @@ sudo iptables -A FORWARD -p tcp --dport 80 -s 192.168.3.1 -d 192.168.5.1 -i $ROU
 sudo iptables -P INPUT DROP
 sudo iptables -P OUTPUT DROP
 sudo iptables -P FORWARD DROP
+
