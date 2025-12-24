@@ -11,38 +11,50 @@ CLIENT="ens39"     # Connection to Client (VMNET4 - 192.168.3.254)
 sudo iptables -F
 sudo iptables -t nat -F
 sudo iptables -X
+
 ########################### STATIC ROUTING ###########################
 # Add routes to networks behind Router 2
 sudo ip route add 192.168.5.0/24 via 192.168.2.1
 sudo ip route add 192.168.4.0/24 via 192.168.2.1
+
 ########################### NAT ###########################
 # Enable masquerading for outgoing internet traffic
 sudo iptables -t nat -A POSTROUTING -o $INTERNET -j MASQUERADE
+
 ########################### INPUT ###########################
 # Allow SSH access from a specific management IP
-sudo iptables -A INPUT -p tcp -s 192.168.21.1 -i $INTERNET --dport 22 -j ACCEPT
+sudo iptables -A INPUT -p tcp -s 192.168.132.37 -i $INTERNET --dport 22 -j ACCEPT
+
 ########################### RELATED ESTABLISHED ###########################
 # Allow return traffic for existing connections
 sudo iptables -A OUTPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 sudo iptables -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 sudo iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+
 ########################### FORWARD ###########################
 # Condition 2: Client 3.1 can access DNS Server 1.1 (UDP 53)
 sudo iptables -A FORWARD -p udp --dport 53 -s 192.168.3.1 -d 192.168.1.1 -i $CLIENT -o $SERVER -j ACCEPT
+
 # Condition 2: Client 4.1 (via Router 2) can access DNS Server 1.1
 sudo iptables -A FORWARD -p udp --dport 53 -s 192.168.4.1 -d 192.168.1.1 -i $ROUTER1 -o $SERVER -j ACCEPT
+
 # Condition 4: DNS Server 1.1 can access Internet (UDP 53)
 sudo iptables -A FORWARD -p udp --dport 53 -s 192.168.1.1 -d 8.8.8.8 -i $SERVER -o $INTERNET -j ACCEPT
+
 # Condition 3: Client 3.1 can access Internet (Port 80, 443)
 sudo iptables -A FORWARD -p tcp --dport 80 -s 192.168.3.1 -i $CLIENT -o $INTERNET -j ACCEPT
 sudo iptables -A FORWARD -p tcp --dport 443 -s 192.168.3.1 -i $CLIENT -o $INTERNET -j ACCEPT
+
 # Condition 1: Client 3.1 can access Web Server 5.1 (Port 80)
 sudo iptables -A FORWARD -p tcp --dport 80 -s 192.168.3.1 -d 192.168.5.1 -i $CLIENT -o $ROUTER1 -j ACCEPT
+
 ########################### POLICY ###########################
 # Block all other traffic by default (Whitelist approach)
 sudo iptables -P INPUT DROP
 sudo iptables -P OUTPUT DROP
 sudo iptables -P FORWARD DROP
+
+echo "Router 1 rules applied successfully."
 
 
 for Router 2
@@ -54,34 +66,43 @@ INTERNET="ens33"   # Connection to NAT/Internet
 WEBSERVER="ens38"  # Connection to Web Server (VMNET5 - 192.168.5.1)
 ROUTER2="ens37"    # Connection to Router 1 (VMNET2 - 192.168.2.254)
 CLIENT="ens39"     # Connection to Client (VMNET6 - 192.168.4.1)
+
 # Flush all current rules and delete user-defined chains
 sudo iptables -F
 sudo iptables -t nat -F
 sudo iptables -X
+
 ########################### STATIC ROUTING ###########################
 # Add routes to reach networks behind Router 1
 sudo ip route add 192.168.1.0/24 via 192.168.2.254
 sudo ip route add 192.168.3.0/24 via 192.168.2.254
+
 ########################### NAT ###########################
 # Enable masquerading to allow internal devices to access the internet
 sudo iptables -t nat -A POSTROUTING -o $INTERNET -j MASQUERADE
+
 ########################### INPUT ###########################
 # Allow SSH access from a specific management IP on the internet interface
-sudo iptables -A INPUT -p tcp -s 192.168.21.1 -i $INTERNET --dport 22 -j ACCEPT
+sudo iptables -A INPUT -p tcp -s 192.168.132.37 -i $INTERNET --dport 22 -j ACCEPT
+
 ########################### RELATED ESTABLISHED ###########################
 # Allow return traffic for already established connections
 sudo iptables -A OUTPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 sudo iptables -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 sudo iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+
 ########################### FORWARD ###########################
 # Condition 2: Allow Client 4.1 to access DNS Server 1.1 (UDP port 53)
 sudo iptables -A FORWARD -p udp --dport 53 -s 192.168.4.1 -d 192.168.1.1 -i $CLIENT -o $ROUTER2 -j ACCEPT
+
 # Condition 3: Allow Client 4.1 to access the Internet (Ports 80 and 443)
 sudo iptables -A FORWARD -p tcp --dport 80 -s 192.168.4.1 -i $CLIENT -o $INTERNET -j ACCEPT
 sudo iptables -A FORWARD -p tcp --dport 443 -s 192.168.4.1 -i $CLIENT -o $INTERNET -j ACCEPT
+
 # Condition 1: Allow Client 4.1 and Client 3.1 (via Router 1) to access Web Server 5.1 (Port 80)
 sudo iptables -A FORWARD -p tcp --dport 80 -s 192.168.4.1 -d 192.168.5.1 -i $CLIENT -o $WEBSERVER -j ACCEPT
 sudo iptables -A FORWARD -p tcp --dport 80 -s 192.168.3.1 -d 192.168.5.1 -i $ROUTER2 -o $WEBSERVER -j ACCEPT
+
 ########################### POLICY ###########################
 # Set default policies to DROP all traffic
 sudo iptables -P INPUT DROP
